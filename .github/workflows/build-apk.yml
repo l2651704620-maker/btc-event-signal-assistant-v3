@@ -22,7 +22,7 @@ jobs:
           java-version: '17'
       - name: Extract V5 project
         run: |
-          unzip -q BTCSignalAssistantV5-Fixed.zip -d extracted
+          unzip -q BTCSignalAssistantV5-RuleEngine.zip -d extracted
           test -f extracted/BTCSignalAssistantV5/settings.gradle.kts
           test -f extracted/BTCSignalAssistantV5/app/build.gradle.kts
       - name: Set up Gradle
