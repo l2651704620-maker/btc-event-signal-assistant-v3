@@ -8,6 +8,9 @@ on:
       - 'BTCEventSignalAssistant_V3_ThreeTimeframe.zip'
       - '.github/workflows/android.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,22 +28,34 @@ jobs:
         run: |
           mkdir -p app-src
           unzip -q BTCEventSignalAssistant_V3_ThreeTimeframe.zip -d app-src
+          echo "Project files:"
+          find app-src -maxdepth 4 -type f | sort | head -200
 
-      - name: Locate Gradle
-        id: gradle
+      - name: Locate Android project
+        id: project
+        shell: bash
         run: |
-          WRAPPER=$(find app-src -name gradlew -type f -print -quit)
-          if [ -z "$WRAPPER" ]; then
-            echo "No gradlew found in ZIP"
-            exit 1
+          SETTINGS=$(find app-src -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          if [ -n "$SETTINGS" ]; then
+            PROJECT_DIR=$(dirname "$SETTINGS")
+          else
+            BUILD_FILE=$(find app-src -type f \( -name build.gradle -o -name build.gradle.kts \) -print -quit)
+            if [ -z "$BUILD_FILE" ]; then
+              echo "::error::No Gradle project files found in ZIP"
+              exit 1
+            fi
+            PROJECT_DIR=$(dirname "$BUILD_FILE")
           fi
-          DIR=$(dirname "$WRAPPER")
-          echo "project_dir=$DIR" >> "$GITHUB_OUTPUT"
-          chmod +x "$WRAPPER"
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
 
       - name: Build APK
-        working-directory: ${{ steps.gradle.outputs.project_dir }}
-        run: ./gradlew assembleDebug --stacktrace
+        working-directory: ${{ steps.project.outputs.project_dir }}
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
