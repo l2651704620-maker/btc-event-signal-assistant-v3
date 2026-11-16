@@ -1,0 +1,50 @@
+
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'BTCEventSignalAssistant_V3_ThreeTimeframe.zip'
+      - '.github/workflows/android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract project
+        run: |
+          mkdir -p app-src
+          unzip -q BTCEventSignalAssistant_V3_ThreeTimeframe.zip -d app-src
+
+      - name: Locate Gradle
+        id: gradle
+        run: |
+          WRAPPER=$(find app-src -name gradlew -type f -print -quit)
+          if [ -z "$WRAPPER" ]; then
+            echo "No gradlew found in ZIP"
+            exit 1
+          fi
+          DIR=$(dirname "$WRAPPER")
+          echo "project_dir=$DIR" >> "$GITHUB_OUTPUT"
+          chmod +x "$WRAPPER"
+
+      - name: Build APK
+        working-directory: ${{ steps.gradle.outputs.project_dir }}
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BTC-Event-Signal-Assistant-APK
+          path: app-src/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
