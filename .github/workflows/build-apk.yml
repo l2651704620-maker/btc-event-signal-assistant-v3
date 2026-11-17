@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -15,26 +15,44 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Extract V5 project
         run: |
           unzip -q BTCSignalAssistantV5-RuleEngine.zip -d extracted
           test -f extracted/BTCSignalAssistantV5/settings.gradle.kts
           test -f extracted/BTCSignalAssistantV5/app/build.gradle.kts
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
       - name: Build APK
         working-directory: extracted/BTCSignalAssistantV5
         run: gradle assembleDebug
-      - name: Upload APK
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: BTCSignalAssistant-V5-debug-apk
           path: extracted/BTCSignalAssistantV5/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish APK to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v5-build-${{ github.run_number }}
+          name: BTC Signal Assistant V5 Build ${{ github.run_number }}
+          body: |
+            Automatically generated Android debug APK.
+          files: extracted/BTCSignalAssistantV5/app/build/outputs/apk/debug/*.apk
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
